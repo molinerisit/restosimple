@@ -58,6 +58,19 @@ class SaleViewModel(
             is SaleIntent.CloseWeightDialog -> _state.update { it.copy(showWeightDialog = false, weightProduct = null) }
             is SaleIntent.SetAvailability  -> scope.launch { catalogService.setAvailability(intent.productId, intent.available); loadInitial() }
             is SaleIntent.DismissToast     -> _state.update { it.copy(toast = null) }
+            is SaleIntent.SendToKitchen    -> sendToKitchen()
+            is SaleIntent.OpenManagerPanel -> _state.update { it.copy(showManagerPanel = true) }
+            is SaleIntent.CloseManagerPanel -> _state.update { it.copy(showManagerPanel = false) }
+            is SaleIntent.CashIn           -> cashIn(intent.amount, intent.reason)
+            is SaleIntent.CashOut          -> cashOut(intent.amount, intent.reason)
+            is SaleIntent.OpenReports      -> _state.update { it.copy(showReports = true, showManagerPanel = false) }
+            is SaleIntent.CloseReports     -> _state.update { it.copy(showReports = false) }
+            is SaleIntent.RequestVoidItem  -> requestVoid(intent.itemId)
+            is SaleIntent.ConfirmVoidWithPin -> confirmVoidWithPin(intent.itemId, intent.pin)
+            is SaleIntent.CancelPinConfirm -> _state.update { it.copy(showPinConfirm = false, pendingVoidItemId = null) }
+            is SaleIntent.RequestCloseShift -> _state.update { it.copy(showManagerPanel = false, requestCloseShift = true) }
+            is SaleIntent.AcknowledgeCloseShift -> _state.update { it.copy(requestCloseShift = false) }
+            is SaleIntent.Backup           -> doBackup()
         }
     }
 
@@ -100,6 +113,52 @@ class SaleViewModel(
         val updated = sale.copy(items = sale.items.map { if (it.id == itemId) it.copy(voided = true) else it })
         scope.launch { saleService.save(updated) }
         _state.update { it.copy(currentSale = updated) }
+    }
+
+    private fun requestVoid(itemId: String) {
+        val user = _state.value.currentUser ?: return
+        if (user.canVoidItem()) {
+            voidItem(itemId)
+        } else {
+            _state.update { it.copy(showPinConfirm = true, pendingVoidItemId = itemId) }
+        }
+    }
+
+    private fun confirmVoidWithPin(itemId: String, pin: String) {
+        val authUser = userRepo.findByPin(pin)
+        if (authUser != null && authUser.canVoidItem()) {
+            voidItem(itemId)
+            _state.update { it.copy(showPinConfirm = false, pendingVoidItemId = null, toast = "Ítem anulado por ${authUser.name}") }
+        } else {
+            _state.update { it.copy(toast = "PIN incorrecto o sin permisos") }
+        }
+    }
+
+    private fun sendToKitchen() {
+        val sale = _state.value.currentSale ?: return
+        scope.launch { saleService.sendToKitchen(sale, "TicketSimple") }
+        _state.update { it.copy(toast = "Enviado a cocina") }
+    }
+
+    private fun cashIn(amount: Double, reason: String) {
+        val shift = _state.value.shift ?: return
+        val userId = _state.value.currentUser?.id ?: "system"
+        scope.launch { shiftService.addCashIn(shift.id, userId, amount, reason) }
+        _state.update { it.copy(showManagerPanel = false, toast = "Ingreso registrado") }
+    }
+
+    private fun cashOut(amount: Double, reason: String) {
+        val shift = _state.value.shift ?: return
+        val userId = _state.value.currentUser?.id ?: "system"
+        scope.launch { shiftService.addCashOut(shift.id, userId, amount, reason) }
+        _state.update { it.copy(showManagerPanel = false, toast = "Egreso registrado") }
+    }
+
+    private fun doBackup() {
+        scope.launch {
+            val path = ar.ticketsimple.pos.infrastructure.backup.BackupService.backup()
+            _state.update { it.copy(toast = if (path != null) "Backup creado" else "Error al crear backup", lastBackupPath = path) }
+        }
     }
 
     private fun updateQuantity(itemId: String, delta: Int) {

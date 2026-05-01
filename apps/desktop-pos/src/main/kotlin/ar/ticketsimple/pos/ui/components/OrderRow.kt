@@ -3,6 +3,7 @@ package ar.ticketsimple.pos.ui.components
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -59,6 +60,9 @@ fun OrderRow(
                     modifier = Modifier.padding(horizontal = 8.dp)
                 )
                 SmallIconButton(onClick = onIncrement, icon = Icons.Default.Add, description = "Agregar")
+                Spacer(Modifier.width(4.dp))
+                SmallIconButton(onClick = onVoid, icon = Icons.Default.Close, description = "Anular ítem",
+                    tint = TSColors.Danger)
             }
         }
 
@@ -73,7 +77,12 @@ fun OrderRow(
 }
 
 @Composable
-private fun SmallIconButton(onClick: () -> Unit, icon: androidx.compose.ui.graphics.vector.ImageVector, description: String) {
+private fun SmallIconButton(
+    onClick: () -> Unit,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    description: String,
+    tint: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant
+) {
     FilledTonalIconButton(
         onClick = onClick,
         modifier = Modifier.size(28.dp),
@@ -81,6 +90,6 @@ private fun SmallIconButton(onClick: () -> Unit, icon: androidx.compose.ui.graph
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
-        Icon(icon, contentDescription = description, modifier = Modifier.size(14.dp))
+        Icon(icon, contentDescription = description, modifier = Modifier.size(14.dp), tint = tint)
     }
 }

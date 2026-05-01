@@ -27,4 +27,17 @@ sealed interface SaleIntent {
     data object CloseWeightDialog                       : SaleIntent
     data class SetAvailability(val productId: String, val available: Boolean) : SaleIntent
     data object DismissToast                            : SaleIntent
+    data object SendToKitchen                           : SaleIntent
+    data object OpenManagerPanel                        : SaleIntent
+    data object CloseManagerPanel                       : SaleIntent
+    data class CashIn(val amount: Double, val reason: String)  : SaleIntent
+    data class CashOut(val amount: Double, val reason: String) : SaleIntent
+    data object OpenReports                             : SaleIntent
+    data object CloseReports                            : SaleIntent
+    data class RequestVoidItem(val itemId: String)      : SaleIntent
+    data class ConfirmVoidWithPin(val itemId: String, val pin: String) : SaleIntent
+    data object CancelPinConfirm                        : SaleIntent
+    data object RequestCloseShift                       : SaleIntent
+    data object AcknowledgeCloseShift                   : SaleIntent
+    data object Backup                                  : SaleIntent
 }

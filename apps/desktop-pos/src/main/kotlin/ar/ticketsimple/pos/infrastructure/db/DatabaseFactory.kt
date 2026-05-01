@@ -4,22 +4,26 @@ import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.io.File
+import java.sql.DriverManager
 
 object DatabaseFactory {
 
     fun init(dataDir: String = "data") {
         File(dataDir).mkdirs()
-        val dbPath = "$dataDir/ticketsimple.db"
+        val jdbcUrl = "jdbc:sqlite:$dataDir/ticketsimple.db"
 
-        Database.connect(
-            url    = "jdbc:sqlite:$dbPath",
-            driver = "org.sqlite.JDBC"
-        )
+        // PRAGMAs must run outside any transaction
+        DriverManager.getConnection(jdbcUrl).use { conn ->
+            conn.createStatement().use { stmt ->
+                stmt.execute("PRAGMA journal_mode=WAL;")
+                stmt.execute("PRAGMA foreign_keys=ON;")
+                stmt.execute("PRAGMA synchronous=NORMAL;")
+            }
+        }
+
+        Database.connect(url = jdbcUrl, driver = "org.sqlite.JDBC")
 
         transaction {
-            exec("PRAGMA journal_mode=WAL;")
-            exec("PRAGMA foreign_keys=ON;")
-            exec("PRAGMA synchronous=NORMAL;")
             SchemaUtils.createMissingTablesAndColumns(
                 CategoryTable,
                 ProductTable,

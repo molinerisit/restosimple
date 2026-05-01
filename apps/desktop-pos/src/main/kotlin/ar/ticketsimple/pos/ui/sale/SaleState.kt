@@ -20,8 +20,14 @@ data class SaleState(
     val showDiscountDialog: Boolean       = false,
     val showWeightDialog: Boolean         = false,
     val weightProduct: Product?           = null,
+    val showManagerPanel: Boolean         = false,
+    val showReports: Boolean              = false,
+    val showPinConfirm: Boolean           = false,
+    val pendingVoidItemId: String?        = null,
     val isLoading: Boolean                = false,
-    val toast: String?                    = null
+    val toast: String?                    = null,
+    val lastBackupPath: String?           = null,
+    val requestCloseShift: Boolean        = false
 ) {
     val filteredProducts: List<Product>
         get() {

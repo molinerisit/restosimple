@@ -23,6 +23,8 @@ import ar.ticketsimple.pos.domain.catalog.Category
 import ar.ticketsimple.pos.ui.components.OrderRow
 import ar.ticketsimple.pos.ui.components.ProductTile
 import ar.ticketsimple.pos.ui.components.TSSearchBar
+import ar.ticketsimple.pos.ui.components.PinConfirmDialog
+import ar.ticketsimple.pos.ui.manager.ManagerPanel
 import ar.ticketsimple.pos.ui.theme.TSColors
 import java.text.NumberFormat
 import java.util.Locale
@@ -40,7 +42,11 @@ fun SaleScreen(viewModel: SaleViewModel) {
         } else false
     }) {
         Column(Modifier.fillMaxSize()) {
-            SaleTopBar(state, onToggleCompact = { viewModel.onIntent(SaleIntent.ToggleCompactMode) })
+            SaleTopBar(
+                state           = state,
+                onToggleCompact = { viewModel.onIntent(SaleIntent.ToggleCompactMode) },
+                onOpenManager   = { viewModel.onIntent(SaleIntent.OpenManagerPanel) }
+            )
             HorizontalDivider()
             Row(Modifier.weight(1f)) {
                 LeftPanel(
@@ -74,6 +80,24 @@ fun SaleScreen(viewModel: SaleViewModel) {
                 onDismiss = { viewModel.onIntent(SaleIntent.CloseWeightDialog) }
             )
         }
+        if (state.showManagerPanel) {
+            ManagerPanel(
+                shift        = state.shift,
+                onCashIn     = { a, r -> viewModel.onIntent(SaleIntent.CashIn(a, r)) },
+                onCashOut    = { a, r -> viewModel.onIntent(SaleIntent.CashOut(a, r)) },
+                onOpenReports = { viewModel.onIntent(SaleIntent.OpenReports) },
+                onCloseShift  = { viewModel.onIntent(SaleIntent.RequestCloseShift) },
+                onDismiss    = { viewModel.onIntent(SaleIntent.CloseManagerPanel) }
+            )
+        }
+        if (state.showPinConfirm && state.pendingVoidItemId != null) {
+            PinConfirmDialog(
+                title    = "Anular ítem",
+                subtitle = "Requiere PIN de gerente, admin o dueño",
+                onConfirm = { pin -> viewModel.onIntent(SaleIntent.ConfirmVoidWithPin(state.pendingVoidItemId!!, pin)) },
+                onDismiss = { viewModel.onIntent(SaleIntent.CancelPinConfirm) }
+            )
+        }
 
         state.toast?.let { msg ->
             Snackbar(
@@ -87,7 +111,7 @@ fun SaleScreen(viewModel: SaleViewModel) {
 }
 
 @Composable
-private fun SaleTopBar(state: SaleState, onToggleCompact: () -> Unit) {
+private fun SaleTopBar(state: SaleState, onToggleCompact: () -> Unit, onOpenManager: () -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -113,6 +137,10 @@ private fun SaleTopBar(state: SaleState, onToggleCompact: () -> Unit) {
         Icon(Icons.Default.Circle, contentDescription = "Estado", tint = TSColors.Success, modifier = Modifier.size(10.dp))
         Spacer(Modifier.width(4.dp))
         Text("Conectado", style = MaterialTheme.typography.labelMedium, color = TSColors.Success)
+        Spacer(Modifier.width(12.dp))
+        IconButton(onClick = onOpenManager) {
+            Icon(Icons.Default.ManageAccounts, contentDescription = "Gerente", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 
@@ -300,6 +328,17 @@ private fun QuickActionsRow(hasSale: Boolean, onIntent: (SaleIntent) -> Unit) {
         ) { Text("Descuento", style = MaterialTheme.typography.labelMedium) }
 
         OutlinedButton(
+            onClick  = { onIntent(SaleIntent.SendToKitchen) },
+            enabled  = hasSale,
+            modifier = Modifier.weight(1f).height(40.dp),
+            contentPadding = PaddingValues(horizontal = 4.dp)
+        ) {
+            Icon(Icons.Default.Restaurant, contentDescription = null, modifier = Modifier.size(14.dp))
+            Spacer(Modifier.width(4.dp))
+            Text("Cocina", style = MaterialTheme.typography.labelMedium)
+        }
+
+        OutlinedButton(
             onClick  = { onIntent(SaleIntent.SuspendSale) },
             enabled  = hasSale,
             modifier = Modifier.weight(1f).height(40.dp),
@@ -312,6 +351,6 @@ private fun QuickActionsRow(hasSale: Boolean, onIntent: (SaleIntent) -> Unit) {
             modifier = Modifier.weight(1f).height(40.dp),
             colors   = ButtonDefaults.outlinedButtonColors(contentColor = TSColors.Danger),
             contentPadding = PaddingValues(horizontal = 4.dp)
-        ) { Text("Anular", style = MaterialTheme.typography.labelMedium) }
+        ) { Text("Anular venta", style = MaterialTheme.typography.labelMedium) }
     }
 }

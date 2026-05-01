@@ -75,6 +75,20 @@ class SaleService(
             avgTicket  = if (sales.isEmpty()) 0.0 else sales.sumOf { it.total } / sales.size
         )
     }
+
+    fun topProductsForShift(shiftId: String, limit: Int = 5): List<Triple<String, Int, Double>> {
+        val sales = saleRepo.salesByShift(shiftId).filter { it.status == SaleStatus.PAID }
+        return sales.flatMap { it.items.filter { i -> !i.voided } }
+            .groupBy { it.productName }
+            .map { (name, items) -> Triple(name, items.sumOf { it.quantity }, items.sumOf { it.lineTotal }) }
+            .sortedByDescending { it.second }
+            .take(limit)
+    }
+
+    fun sendToKitchen(sale: Sale, businessName: String) {
+        printer.printKitchenTicket(sale, businessName)
+        auditRepo.record(AuditEvent(UUID.randomUUID().toString(), AuditAction.SALE_CREATED, sale.id, "system", "kitchen_send"))
+    }
 }
 
 data class ShiftSummary(

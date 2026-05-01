@@ -11,6 +11,7 @@ import java.util.Locale
 
 interface PrinterPort {
     fun printTicket(sale: Sale, payment: Payment, businessName: String)
+    fun printKitchenTicket(sale: Sale, businessName: String)
     fun printShiftSummary(shift: Shift, totalSales: Double, salesCount: Int)
     fun openCashDrawer()
 }
@@ -32,6 +33,15 @@ class ConsolePrinterAdapter : PrinterPort {
         log.info("==============")
     }
 
+    override fun printKitchenTicket(sale: Sale, businessName: String) {
+        log.info("=== COCINA ===")
+        log.info("Comanda #${sale.id.takeLast(6).uppercase()}")
+        sale.items.filter { !it.voided }.forEach { item ->
+            log.info("  ${item.quantity}x ${item.productName}${if (item.notes != null) " (${item.notes})" else ""}")
+        }
+        log.info("==============")
+    }
+
     override fun printShiftSummary(shift: Shift, totalSales: Double, salesCount: Int) {
         log.info("=== CIERRE DE CAJA ===")
         log.info("Cajero: ${shift.userName}")
@@ -50,6 +60,19 @@ class NetworkEscPosPrinterAdapter(private val host: String, private val port: In
 
     override fun printTicket(sale: Sale, payment: Payment, businessName: String) {
         sendRaw(buildTicket(sale, payment, businessName))
+    }
+
+    override fun printKitchenTicket(sale: Sale, businessName: String) {
+        val text = buildString {
+            appendLine(center("COCINA", 42))
+            appendLine("Comanda #${sale.id.takeLast(6).uppercase()}")
+            appendLine(divider())
+            sale.items.filter { !it.voided }.forEach { item ->
+                appendLine("${item.quantity}x ${item.productName}${if (item.notes != null) " (${item.notes})" else ""}")
+            }
+            appendLine()
+        }
+        sendRaw(text.toByteArray(Charsets.ISO_8859_1))
     }
 
     override fun printShiftSummary(shift: Shift, totalSales: Double, salesCount: Int) {
